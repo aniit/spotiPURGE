@@ -1,0 +1,45 @@
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
+
+# Spotify API credentials
+client_id = '_____'
+client_secret = '_____'
+redirect_uri = 'http://localhost:3000'
+scope = 'user-library-read, playlist-modify-public'
+
+# Authenticate with Spotify
+sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=client_id,
+                                               client_secret=client_secret,
+                                               redirect_uri=redirect_uri,
+                                               scope=scope))
+
+# Fetch the current user's saved tracks
+def get_saved_tracks():
+    saved_tracks = []
+    results = sp.current_user_saved_tracks()
+    while results:
+        saved_tracks += results['items']
+        results = sp.next(results)
+    return [item['track']['id'] for item in saved_tracks]
+
+# Create a new playlist and add the saved tracks to it
+def create_playlist_with_saved_tracks(track_ids):
+    user_id = sp.current_user()['id']
+    playlist = sp.user_playlist_create(user_id, 'My Liked Songs Playlist', public=True)
+    
+    # Spotify's API limit for adding tracks to a playlist in one request is 100 tracks
+    max_tracks_per_request = 100
+    
+    for i in range(0, len(track_ids), max_tracks_per_request):
+        batch = track_ids[i:i+max_tracks_per_request]
+        sp.playlist_add_items(playlist['id'], batch)
+    
+    print(f"Playlist created: {playlist['name']} with {len(track_ids)} tracks.")
+
+# Main function
+def main():
+    track_ids = get_saved_tracks()
+    create_playlist_with_saved_tracks(track_ids)
+
+if __name__ == '__main__':
+    main()
